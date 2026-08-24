@@ -1,0 +1,14 @@
+{
+  "name": "html-to-pdf-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Secure HTML-to-PDF conversion API (Node.js + Vercel serverless + puppeteer-core + @sparticuz/chromium)",
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
+    "puppeteer-core": "^25.0.4"
+  }
+}
