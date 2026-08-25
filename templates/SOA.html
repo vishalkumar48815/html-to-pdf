@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Statement of Account</title>
+
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            background: #fff;
+        }
+
+        body {
+            padding: 27px 47px 22px 47px;
+            font-size: 12px;
+        }
+
+        .header {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 26px;
+        }
+
+        .logo {
+            width: 160px;
+            height: auto;
+            margin-right: 12px;
+        }
+
+        .company-info {
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .company-name {
+            font-size: 20px;
+            font-weight: 400;
+        }
+
+        .registration {
+            font-size: 10px;
+        }
+
+        .bold {
+            font-weight: 700;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 8px 0 18px 0;
+        }
+
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin: 0 13px 16px 13px;
+        }
+
+        .info-left {
+            width: 62%;
+        }
+
+        .info-right {
+            width: 32%;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+
+        .info-label {
+            width: 70px;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            flex: 1;
+        }
+
+        .address-line {
+            line-height: 1.35;
+        }
+
+        .right-row {
+            display: flex;
+            margin-bottom: 14px;
+        }
+
+        .right-label {
+            width: 110px;
+            flex-shrink: 0;
+        }
+
+        .right-value {
+            flex: 1;
+        }
+
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 10.5px;
+        }
+
+        .transaction-table thead {
+            border-top: 1px solid #222;
+            border-bottom: 1px solid #222;
+        }
+
+        .transaction-table th {
+            padding: 4px 3px;
+            font-weight: 400;
+            text-align: center;
+        }
+
+        .transaction-table td {
+            padding: 6px 3px;
+            vertical-align: top;
+        }
+
+        .transaction-table th:nth-child(1),
+        .transaction-table td:nth-child(1) {
+            width: 11%;
+        }
+
+        .transaction-table th:nth-child(2),
+        .transaction-table td:nth-child(2) {
+            width: 18%;
+        }
+
+        .transaction-table th:nth-child(3),
+        .transaction-table td:nth-child(3) {
+            width: 18%;
+        }
+
+        .transaction-table th:nth-child(4),
+        .transaction-table td:nth-child(4) {
+            width: 16%;
+        }
+
+        .transaction-table th:nth-child(5),
+        .transaction-table td:nth-child(5) {
+            width: 12%;
+        }
+
+        .transaction-table th:nth-child(6),
+        .transaction-table td:nth-child(6) {
+            width: 10%;
+        }
+
+        .transaction-table th:nth-child(7),
+        .transaction-table td:nth-child(7) {
+            width: 15%;
+        }
+
+        .amount {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        /*
+      Keeps the total/ageing section near the bottom for short statements.
+      We can fine-tune this after your first generated PDF test.
+    */
+        .spacer {
+            height: 515px;
+        }
+
+        .total-section {
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 5px 0 7px 0;
+            font-size: 10px;
+        }
+
+        .amount-words {
+            flex: 1;
+        }
+
+        .currency {
+            width: 45px;
+            text-align: center;
+        }
+
+        .total-label {
+            width: 30px;
+            text-align: center;
+        }
+
+        .total-value {
+            width: 80px;
+            text-align: right;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .ageing {
+            width: 97%;
+            margin: 0 auto;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 10px;
+        }
+
+        .ageing th,
+        .ageing td {
+            border: 1px solid #555;
+            padding: 6px 3px;
+            text-align: center;
+        }
+
+        .ageing th {
+            font-weight: 400;
+        }
+
+        .note {
+            width: 97%;
+            margin: 11px auto 0 auto;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <img class="logo" src="./images/acestar-logo.png" alt="Acestar" />
+
+        <div class="company-info">
+            <div>
+                <span class="company-name">{{company.name}}</span>
+                <span class="registration">({{company.registration_no}})</span>
+            </div>
+
+            <div>
+                <span class="bold">SST No.:</span>
+                {{company.sst_no}}
+            </div>
+
+            <div>10-6, Tower A, Vertical Business Suite, Avenue 3, Bangsar South,</div>
+            <div>No. 8, Jalan Kerinchi, 59200 Kuala Lumpur</div>
+
+            <div>
+                <span class="bold">Phone:</span>
+                {{company.phone}}
+            </div>
+        </div>
+    </div>
+
+    <div class="title">DEBTOR STATEMENT</div>
+
+    <div class="info-section">
+
+        <div class="info-left">
+
+            <div class="info-row">
+                <div class="info-label">A/C No.:</div>
+                <div class="info-value">{{statement.account_no}}</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Debtor:</div>
+                <div class="info-value">{{customer.name}}</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Address:</div>
+
+                <div class="info-value">
+                    {{#each customer.address}}
+                    <div class="address-line">{{this}}</div>
+                    {{/each}}
+                </div>
+            </div>
+
+        </div>
+
+        <div class="info-right">
+
+            <div class="right-row">
+                <div class="right-label">Statement Date:</div>
+                <div class="right-value">{{statement.statement_date}}</div>
+            </div>
+
+            <div class="right-row">
+                <div class="right-label">Terms:</div>
+                <div class="right-value">{{statement.terms}}</div>
+            </div>
+
+            <div class="right-row">
+                <div class="right-label">Page :</div>
+                <div class="right-value">1 of 1</div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <table class="transaction-table">
+
+        <thead>
+            <tr>
+                <th>DATE</th>
+                <th>REF.</th>
+                <th>DESCRIPTION</th>
+                <th>PO Number</th>
+                <th>DR</th>
+                <th>CR</th>
+                <th>BALANCE</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {{#each transactions}}
+            <tr>
+                <td>{{date}}</td>
+                <td>{{reference}}</td>
+                <td>{{description}}</td>
+                <td>{{po_number}}</td>
+                <td class="amount">{{money debit}}</td>
+                <td class="amount">{{blankZero credit}}</td>
+                <td class="amount">{{money balance}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+
+    </table>
+
+    <div class="spacer"></div>
+
+    <div class="total-section">
+
+        <div class="amount-words">
+            {{total.amount_in_words}}
+        </div>
+
+        <div class="currency">RM</div>
+
+        <div class="total-label">:</div>
+
+        <div class="total-value">
+            {{money total.amount}}
+        </div>
+
+    </div>
+
+    <table class="ageing">
+
+        <thead>
+            <tr>
+                <th>CURRENT</th>
+                <th>1-30 DAYS</th>
+                <th>31-60</th>
+                <th>61-90</th>
+                <th>91-120</th>
+                <th>121 DAYS+</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr>
+                <td>{{money ageing.current}}</td>
+                <td>{{money ageing.days_1_30}}</td>
+                <td>{{money ageing.days_31_60}}</td>
+                <td>{{money ageing.days_61_90}}</td>
+                <td>{{money ageing.days_91_120}}</td>
+                <td>{{money ageing.days_121_plus}}</td>
+            </tr>
+        </tbody>
+
+    </table>
+
+    <div class="note">
+        We shall be grateful if you will let us have payment as soon as possible.
+        Any discrepancy in this statement must be reported to us in writing within
+        10 days.
+    </div>
+
+</body>
+
+</html>

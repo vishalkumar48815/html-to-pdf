@@ -1,11 +1,41 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
+import Handlebars from 'handlebars';
 
 // Pure PDF/screenshot workloads don't need WebGL; disabling it speeds up cold starts.
 chromium.setGraphicsMode = false;
 
 const DEFAULT_FILENAME = 'document.pdf';
+
+// Register Handlebars Helpers
+Handlebars.registerHelper('money', function (val) {
+  if (val === null || val === undefined || val === '') return '';
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, ''));
+  if (isNaN(num)) return val;
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+});
+
+Handlebars.registerHelper('blankZero', function (val) {
+  if (val === null || val === undefined || val === '') return '';
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, ''));
+  if (isNaN(num) || num === 0) return '';
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+});
+
+Handlebars.registerHelper('eq', (a, b) => a === b);
+Handlebars.registerHelper('ne', (a, b) => a !== b);
+Handlebars.registerHelper('gt', (a, b) => a > b);
+Handlebars.registerHelper('gte', (a, b) => a >= b);
+Handlebars.registerHelper('lt', (a, b) => a < b);
+Handlebars.registerHelper('lte', (a, b) => a <= b);
+Handlebars.registerHelper('and', (...args) => args.slice(0, -1).every(Boolean));
+Handlebars.registerHelper('or', (...args) => args.slice(0, -1).some(Boolean));
+Handlebars.registerHelper('not', (val) => !val);
+Handlebars.registerHelper('uppercase', (str) => (typeof str === 'string' ? str.toUpperCase() : str));
+Handlebars.registerHelper('lowercase', (str) => (typeof str === 'string' ? str.toLowerCase() : str));
 
 function sendJsonError(res, statusCode, message, details) {
   res.status(statusCode).json({
@@ -45,6 +75,66 @@ function sanitizeFilename(rawFilename) {
   return name || DEFAULT_FILENAME;
 }
 
+function inlineLocalAssets(htmlContent) {
+  return htmlContent.replace(/src=["'](\.?\/?(?:assets\/|templates\/|images\/)?[^"']+\.(?:png|jpg|jpeg|svg|gif|webp))["']/gi, (match, imagePath) => {
+    if (imagePath.startsWith('data:') || imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return match;
+    }
+
+    const cleanPath = imagePath.replace(/^\.?\//, '');
+    const filename = path.basename(cleanPath);
+
+    const candidatePaths = [
+      path.join(process.cwd(), cleanPath),
+      path.join(process.cwd(), 'assets', cleanPath),
+      path.join(process.cwd(), 'assets', 'images', filename),
+      path.join(process.cwd(), 'templates', cleanPath),
+      path.join(process.cwd(), 'templates', 'images', filename),
+    ];
+
+    for (const candidate of candidatePaths) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        const ext = path.extname(candidate).slice(1).toLowerCase();
+        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        const b64 = fs.readFileSync(candidate).toString('base64');
+        return `src="data:${mime};base64,${b64}"`;
+      }
+    }
+    return match;
+  });
+}
+
+function findTemplate(templateName) {
+  if (!templateName || typeof templateName !== 'string') {
+    throw new Error('Missing or invalid "template" parameter.');
+  }
+
+  const cleanName = path.basename(templateName.trim());
+  const candidateNames = [
+    cleanName,
+    cleanName.toLowerCase().endsWith('.html') ? cleanName : `${cleanName}.html`,
+    cleanName.replace(/\.html$/i, ''),
+  ];
+
+  const searchDirs = [
+    path.join(process.cwd(), 'templates'),
+    path.join(process.cwd(), 'assets'),
+    path.join(process.cwd(), 'assets', 'templates'),
+    process.cwd(),
+  ];
+
+  for (const dir of searchDirs) {
+    for (const name of candidateNames) {
+      const fullPath = path.join(dir, name);
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        return fs.readFileSync(fullPath, 'utf-8');
+      }
+    }
+  }
+
+  throw new Error(`Template "${templateName}" not found. Searched in templates/ and assets/`);
+}
+
 async function getRawBodyBuffer(req) {
   if (Buffer.isBuffer(req.body)) {
     return req.body;
@@ -56,7 +146,6 @@ async function getRawBodyBuffer(req) {
     return null;
   }
 
-  // Handle incoming stream if body was not pre-parsed by runtime
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
@@ -139,8 +228,30 @@ async function parseBody(req) {
 }
 
 function resolveRenderPayload(body) {
-  const type = (body.type || (body.url ? 'url' : body.file ? 'file' : 'html')).toLowerCase();
+  const type = (body.type || (body.template ? 'html_file' : body.url ? 'url' : body.file ? 'file' : 'html')).toLowerCase();
 
+  // 1. Template from server file system: type: "html_file" or "template"
+  if (type === 'html_file' || type === 'template') {
+    const templateName = body.template || body.file || body.name;
+    if (!templateName) {
+      throw new Error('Missing "template" field in request body for type "html_file".');
+    }
+
+    const rawTemplate = findTemplate(templateName);
+    const inlinedTemplate = inlineLocalAssets(rawTemplate);
+
+    let renderedHtml;
+    if (body.data && typeof body.data === 'object') {
+      const compiled = Handlebars.compile(inlinedTemplate);
+      renderedHtml = compiled(body.data);
+    } else {
+      renderedHtml = inlinedTemplate;
+    }
+
+    return { mode: 'html', source: renderedHtml };
+  }
+
+  // 2. Direct Web Page URL: type: "url"
   if (type === 'url') {
     const url = body.url || body.link || body.html;
     if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) {
@@ -149,6 +260,7 @@ function resolveRenderPayload(body) {
     return { mode: 'url', source: url.trim() };
   }
 
+  // 3. User-Provided File Payload: type: "file"
   if (type === 'file') {
     const rawFile = body.file || body.data || body.content || body.html;
     if (!rawFile || typeof rawFile !== 'string' || rawFile.trim().length === 0) {
@@ -156,7 +268,6 @@ function resolveRenderPayload(body) {
     }
 
     let trimmed = rawFile.trim();
-    // Handle data URIs like data:text/html;base64,...
     if (trimmed.startsWith('data:')) {
       const commaIdx = trimmed.indexOf(',');
       if (commaIdx !== -1) {
@@ -167,7 +278,6 @@ function resolveRenderPayload(body) {
     let decodedHtml;
     try {
       const buffer = Buffer.from(trimmed, 'base64');
-      // If it looks like base64 and round-trips cleanly without angle brackets
       const isBase64 = !trimmed.includes('<') && buffer.toString('base64').replace(/=/g, '') === trimmed.replace(/[\s=]/g, '');
       if (isBase64) {
         decodedHtml = buffer.toString('utf-8');
@@ -182,16 +292,28 @@ function resolveRenderPayload(body) {
       throw new Error('Could not extract valid HTML content from the provided file.');
     }
 
-    return { mode: 'html', source: decodedHtml };
+    let finalHtml = inlineLocalAssets(decodedHtml);
+    if (body.data && typeof body.data === 'object') {
+      const compiled = Handlebars.compile(finalHtml);
+      finalHtml = compiled(body.data);
+    }
+
+    return { mode: 'html', source: finalHtml };
   }
 
-  // Default: type === 'html'
+  // 4. Raw HTML String: type: "html" (default)
   const html = body.html || body.content || body.file;
   if (!html || typeof html !== 'string' || html.trim().length === 0) {
     throw new Error('Missing or empty "html" field in request body.');
   }
 
-  return { mode: 'html', source: html };
+  let finalHtml = inlineLocalAssets(html);
+  if (body.data && typeof body.data === 'object') {
+    const compiled = Handlebars.compile(finalHtml);
+    finalHtml = compiled(body.data);
+  }
+
+  return { mode: 'html', source: finalHtml };
 }
 
 export default async function handler(req, res) {

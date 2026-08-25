@@ -23,9 +23,16 @@ POST /api/pdf
 ```
 html-to-pdf-api/
 ├── api/
-│   └── pdf.js        # the serverless function
+│   └── pdf.js                 # Serverless converter function
+├── templates/                 # Server-side Handlebars HTML templates
+│   ├── SOA.html
+│   └── Reminder-letter-RL1.html
+├── assets/
+│   └── images/                # Inlined images (logos, signatures)
+│       ├── acestar-logo.png
+│       └── acestar-sign.png
 ├── package.json
-├── vercel.json        # sets function maxDuration
+├── vercel.json                # Function config & bundle includes
 ├── .gitignore
 └── README.md
 ```
@@ -122,7 +129,60 @@ vercel --prod
 
 ### cURL examples
  
-#### 1. Raw HTML (Default / `type: "html"`)
+#### 1. Server Template with Dynamic Data (`type: "html_file"`)
+```bash
+curl -X POST https://MY-APP.vercel.app/api/pdf \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: MY_SECRET" \
+  -d '{
+    "type": "html_file",
+    "template": "SOA",
+    "filename": "SOA_563.pdf",
+    "data": {
+      "company": {
+        "name": "ACESTAR SDN BHD",
+        "registration_no": "811773-K",
+        "sst_no": "W10-1808-32000001",
+        "phone": "+6 03 2201 7688"
+      },
+      "customer": {
+        "name": "GLOBAL TECH ENTERPRISE",
+        "address": ["Level 5, Menara Tower", "Jalan Ampang", "50450 Kuala Lumpur"]
+      },
+      "statement": {
+        "account_no": "563",
+        "statement_date": "31/07/2026",
+        "terms": "30 DAYS"
+      },
+      "transactions": [
+        {
+          "date": "01/07/2026",
+          "reference": "INV-2026-001",
+          "description": "Software Subscription",
+          "po_number": "PO-8891",
+          "debit": 1500.00,
+          "credit": 0,
+          "balance": 1500.00
+        }
+      ],
+      "total": {
+        "amount": 1500.00,
+        "amount_in_words": "ONE THOUSAND FIVE HUNDRED RINGGIT ONLY"
+      },
+      "ageing": {
+        "current": 1500.00,
+        "days_1_30": 0,
+        "days_31_60": 0,
+        "days_61_90": 0,
+        "days_91_120": 0,
+        "days_121_plus": 0
+      }
+    }
+  }' \
+  --output SOA_563.pdf
+```
+
+#### 2. Raw HTML (`type: "html"`)
 ```bash
 curl -X POST https://MY-APP.vercel.app/api/pdf \
   -H "Content-Type: application/json" \

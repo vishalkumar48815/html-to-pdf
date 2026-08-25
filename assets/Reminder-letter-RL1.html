@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Payment Reminder Letter</title>
+
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background: #fff;
+            color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            position: relative;
+            min-height: 1122px;
+            padding: 58px 72px 92px 92px;
+            font-size: 12px;
+            line-height: 1.35;
+            overflow: hidden;
+        }
+
+        .page-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            width: 238px;
+            height: auto;
+            display: block;
+            margin: 0 0 24px 0;
+        }
+
+        .meta-row {
+            margin-bottom: 15px;
+        }
+
+        .label {
+            font-weight: 700;
+        }
+
+        .customer-address {
+            margin-top: 2px;
+            line-height: 1.28;
+        }
+
+        .salutation {
+            margin-top: 21px;
+            margin-bottom: 19px;
+        }
+
+        .subject {
+            font-weight: 700;
+            text-decoration: underline;
+            margin-bottom: 21px;
+        }
+
+        p {
+            margin: 0 0 17px 0;
+        }
+
+        .invoice-intro {
+            margin-top: 4px;
+            margin-bottom: 15px;
+        }
+
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 11px;
+            margin-bottom: 18px;
+        }
+
+        .invoice-table th,
+        .invoice-table td {
+            border: 1px solid #222;
+            padding: 2px 6px;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 1.18;
+        }
+
+        .invoice-table th {
+            font-weight: 700;
+            background: #f7f7f7;
+        }
+
+        .invoice-table th:nth-child(1),
+        .invoice-table td:nth-child(1) {
+            width: 11%;
+        }
+
+        .invoice-table th:nth-child(2),
+        .invoice-table td:nth-child(2) {
+            width: 34%;
+        }
+
+        .invoice-table th:nth-child(3),
+        .invoice-table td:nth-child(3) {
+            width: 14%;
+        }
+
+        .invoice-table th:nth-child(4),
+        .invoice-table td:nth-child(4) {
+            width: 14%;
+        }
+
+        .invoice-table th:nth-child(5),
+        .invoice-table td:nth-child(5) {
+            width: 15%;
+        }
+
+        .invoice-table th:nth-child(6),
+        .invoice-table td:nth-child(6) {
+            width: 12%;
+        }
+
+        .due-date {
+            color: #ff2a2a;
+        }
+
+        .payment-by,
+        .contact-number {
+            font-weight: 700;
+        }
+
+        .signature-block {
+            margin-top: 21px;
+            width: 200px;
+        }
+
+        .signature-image {
+            display: block;
+            width: 72px;
+            height: 58px;
+            object-fit: contain;
+            margin-left: 28px;
+            margin-top: -2px;
+            margin-bottom: -7px;
+        }
+
+        .signature-line {
+            width: 176px;
+            border-top: 1px solid #000;
+            margin-top: 0;
+        }
+
+        .controller {
+            margin-top: 1px;
+        }
+
+        .footer {
+            position: absolute;
+            left: 74px;
+            right: 74px;
+            bottom: 28px;
+            text-align: center;
+        }
+
+        .footer-company {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .footer-main {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .footer-address {
+            font-size: 7.5px;
+            white-space: nowrap;
+        }
+
+        tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-content">
+
+        <img class="logo" src="./assets/images/acestar-logo.png" alt="Acestar" />
+
+        <div class="meta-row">
+            Our ref:
+            <span class="label">{{letter.reference}}</span>
+        </div>
+
+        <div class="meta-row">
+            Date:
+            <span>{{letter.date}}</span>
+        </div>
+
+        <div class="meta-row">
+            <span class="label">Customer Name:</span>
+            {{customer.name}}
+        </div>
+
+        <div class="meta-row">
+            <div class="label">Customer address:</div>
+
+            <div class="customer-address">
+                {{#each customer.address}}
+                <div>{{this}}</div>
+                {{/each}}
+            </div>
+        </div>
+
+        <div class="meta-row">
+            <span class="label">Tel:</span>
+            {{customer.phone}}
+        </div>
+
+        <div class="salutation">
+            To whom it may concern,
+        </div>
+
+        <div class="subject">
+            RE: REMINDER NOTICE – OUTSTANDING PAYMENT
+        </div>
+
+        <p>
+            We are writing to kindly bring to your attention the enclosed
+            <strong>Statement of Account</strong> for your reference. Upon our recent review,
+            we have noted that there are several overdue invoices currently outstanding
+            under your account.
+        </p>
+
+        <p class="invoice-intro">
+            Below are the details of the overdue invoices for your attention:
+        </p>
+
+        <table class="invoice-table">
+            <thead>
+                <tr>
+                    <th>A/C No.</th>
+                    <th>Company Name</th>
+                    <th>Doc No</th>
+                    <th>Date</th>
+                    <th>Due Date</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {{#each payments}}
+                <tr>
+                    <td>{{account_no}}</td>
+                    <td>{{../customer.name}}</td>
+                    <td>{{doc_no}}</td>
+                    <td>{{date}}</td>
+                    <td class="due-date">{{due_date}}</td>
+                    <td>{{money total}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <p>
+            In view of the above, we would greatly appreciate it if the payment could be
+            arranged by <span class="payment-by">{{letter.payment_by}}</span>.
+        </p>
+
+        <p>
+            Should there be any discrepancies, concerns, or if you require any
+            clarification regarding the invoices or your account, please do not hesitate
+            to contact us. We are happy to assist in resolving any issues promptly.
+        </p>
+
+        <p>
+            For further assistance, please contact us at
+            <span class="contact-number">{{letter.contact_phone}}</span>.
+        </p>
+
+        <p>
+            We appreciate your continued cooperation and thank you in advance for your
+            prompt attention to this matter.
+        </p>
+
+        <div class="signature-block">
+            <div>Authorized signature</div>
+
+            <img class="signature-image" src="./assets/images/acestar-sign.png" alt="Authorized signature" />
+
+            <div class="signature-line"></div>
+            <div class="controller">Credit Controller</div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <div class="footer-company">
+            Acestar Sdn Bhd (811773-K)
+        </div>
+
+        <div class="footer-main">
+            T. +6 03 2201 7688 | www.acestar.my
+        </div>
+
+        <div class="footer-address">
+            10-06, Level 10, Tower A, Vertical Business Suite, Avenue 3, Bangsar South,
+            No. 8, Jalan Kerinchi, 59200 Kuala Lumpur, Malaysia
+        </div>
+    </div>
+
+</body>
+
+</html>
