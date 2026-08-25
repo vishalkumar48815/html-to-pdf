@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>2nd Reminder Notice</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            background: #fff;
+            color: #000;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            position: relative;
+            min-height: 1122px;
+            padding: 58px 74px 92px 92px;
+            font-size: 12px;
+            line-height: 1.42;
+            overflow: hidden;
+        }
+
+        .page-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            width: 238px;
+            height: auto;
+            display: block;
+            margin: 0 0 34px 0;
+        }
+
+        .meta-row {
+            margin-bottom: 4px;
+        }
+
+        .customer-block {
+            margin-top: 22px;
+            margin-bottom: 20px;
+        }
+
+        .customer-name {
+            margin-bottom: 18px;
+        }
+
+        .customer-address {
+            margin-top: 3px;
+            line-height: 1.35;
+        }
+
+        .label,
+        .strong {
+            font-weight: 700;
+        }
+
+        .salutation {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .subject {
+            font-weight: 700;
+            text-decoration: underline;
+            margin-bottom: 22px;
+        }
+
+        p {
+            margin: 0 0 18px 0;
+        }
+
+        .signature-block {
+            margin-top: 22px;
+            width: 205px;
+        }
+
+        .signature-label {
+            margin-bottom: 8px;
+        }
+
+        .signature-image {
+            display: block;
+            width: 74px;
+            height: 62px;
+            object-fit: contain;
+            margin-left: 28px;
+            margin-bottom: -7px;
+        }
+
+        .signature-line {
+            width: 182px;
+            border-top: 1px solid #000;
+            margin-top: 0;
+        }
+
+        .controller {
+            margin-top: 18px;
+        }
+
+        .footer {
+            position: absolute;
+            left: 74px;
+            right: 74px;
+            bottom: 27px;
+            text-align: center;
+        }
+
+        .footer-company {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .footer-main {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .footer-address {
+            font-size: 7.5px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-content">
+
+        <img class="logo" src="./assets/images/acestar-logo.png" alt="Acestar" />
+
+        <div class="meta-row">Our ref: <span>{{letter.reference}}</span></div>
+        <div class="meta-row">Date: <span>{{letter.date}}</span></div>
+
+        <div class="customer-block">
+            <div class="customer-name"><span class="label">Customer Name:</span> {{customer.name}}</div>
+
+            <div>
+                <div class="label">Customer address:</div>
+                <div class="customer-address">
+                    {{#each customer.address}}
+                    <div>{{this}}</div>
+                    {{/each}}
+                </div>
+            </div>
+
+            <div style="margin-top:18px;">
+                <span class="label">Tel:</span> {{customer.phone}}
+            </div>
+        </div>
+
+        <div class="salutation">To whom it may concern,</div>
+
+        <div class="subject">RE: 2ND REMINDER NOTICE</div>
+
+        <p>
+            We are writing to bring your urgent attention to the outstanding account related to invoice(s)
+            in our records. Following our 1<sup>st</sup> reminder dated
+            (<span class="strong">{{letter.first_reminder_date}}</span>), the payment for the
+            invoice(s) has been due, and we kindly request you to ensure that the payment reaches us no
+            later than the issuance of this notice
+            (<span class="strong">{{letter.notice_date}}</span>).
+        </p>
+
+        <p>
+            Please be made aware that non-payment within the issuance of this notice
+            <span class="strong">{{letter.notice_date}}</span>
+            may result in a suspension of your credit facility with us and a late payment charge being imposed.
+            As for any pending transactions and future purchase order (s), will be processed only upon a
+            payment in advance basis.
+        </p>
+
+        <p>
+            If there are any concerns or issues regarding the payment process or if you require any
+            additional information or clarification, please do not hesitate to contact us. We are here to
+            assist you and provide any necessary support to ensure a smooth and timely resolution.
+        </p>
+
+        <p>
+            Your cooperation in settling the outstanding account by the given due date is greatly appreciated.
+        </p>
+
+        <p>Thank you for your immediate attention to this matter.</p>
+
+        <div class="signature-block">
+            <div class="signature-label">Authorized signature</div>
+            <img class="signature-image" src="./assets/images/acestar-sign.png" alt="Authorized signature" />
+            <div class="signature-line"></div>
+            <div class="controller">Credit Controller</div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <div class="footer-company">Acestar Sdn Bhd (811773-K)</div>
+        <div class="footer-main">T. +6 03 2201 7688 | www.acestar.my</div>
+        <div class="footer-address">
+            10-06, Level 10, Tower A, Vertical Business Suite, Avenue 3, Bangsar South,
+            No. 8, Jalan Kerinchi, 59200 Kuala Lumpur, Malaysia
+        </div>
+    </div>
+
+</body>
+
+</html>
