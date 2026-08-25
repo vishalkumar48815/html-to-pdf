@@ -10,13 +10,13 @@ POST /api/pdf
 
 ## How it works
 
-1. n8n sends `{ html, filename }` as JSON, with an `X-API-Key` header.
-2. The function validates the API key and the `html` field.
-3. It launches headless Chromium (via `@sparticuz/chromium`), loads the HTML,
-   and renders an A4 PDF with backgrounds enabled and print-safe margins.
+1. Send `{ html }`, `{ type: "file", file: "<base64_or_text>" }`, `{ type: "url", url: "https://..." }`, or upload a file via multipart form-data along with an `X-API-Key` header.
+2. The function validates the API key and resolves the HTML payload.
+3. It launches headless Chromium (via `@sparticuz/chromium`), loads the HTML/URL,
+   and renders a PDF with custom options (format, margins, landscape, etc.).
 4. It returns the raw PDF bytes with `Content-Type: application/pdf` and a
    `Content-Disposition: attachment` header.
-5. n8n receives it as binary data and attaches it to an Outlook email.
+5. n8n (or any HTTP client) receives it as binary data.
 
 ## Project structure
 
@@ -120,17 +120,57 @@ vercel --prod
 
 ## 7. Test the deployed endpoint
 
-### cURL test
-
+### cURL examples
+ 
+#### 1. Raw HTML (Default / `type: "html"`)
 ```bash
 curl -X POST https://MY-APP.vercel.app/api/pdf \
   -H "Content-Type: application/json" \
   -H "X-API-Key: MY_SECRET" \
   -d '{
-    "html":"<html><body><h1>PDF Test</h1></body></html>",
-    "filename":"test.pdf"
+    "type": "html",
+    "html": "<html><body><h1>PDF Test</h1></body></html>",
+    "filename": "test.pdf"
   }' \
   --output test.pdf
+```
+
+#### 2. HTML File as Base64 (`type: "file"`)
+```bash
+# Encode a local .html file to base64
+BASE64_HTML=$(base64 -i my_template.html)
+
+curl -X POST https://MY-APP.vercel.app/api/pdf \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: MY_SECRET" \
+  -d '{
+    "type": "file",
+    "file": "'"$BASE64_HTML"'",
+    "filename": "from_file.pdf"
+  }' \
+  --output from_file.pdf
+```
+
+#### 3. Direct HTML File Upload (`multipart/form-data`)
+```bash
+curl -X POST https://MY-APP.vercel.app/api/pdf \
+  -H "X-API-Key: MY_SECRET" \
+  -F "type=file" \
+  -F "file=@my_template.html" \
+  --output uploaded.pdf
+```
+
+#### 4. Web Page URL (`type: "url"`)
+```bash
+curl -X POST https://MY-APP.vercel.app/api/pdf \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: MY_SECRET" \
+  -d '{
+    "type": "url",
+    "url": "https://example.com",
+    "filename": "webpage.pdf"
+  }' \
+  --output webpage.pdf
 ```
 
 Open `test.pdf` — you should see a one-page A4 PDF with "PDF Test".

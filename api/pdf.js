@@ -45,18 +45,153 @@ function sanitizeFilename(rawFilename) {
   return name || DEFAULT_FILENAME;
 }
 
-function parseBody(req) {
+async function getRawBodyBuffer(req) {
+  if (Buffer.isBuffer(req.body)) {
+    return req.body;
+  }
+  if (typeof req.body === 'string') {
+    return Buffer.from(req.body, 'utf-8');
+  }
+  if (req.body && typeof req.body === 'object') {
+    return null;
+  }
+
+  // Handle incoming stream if body was not pre-parsed by runtime
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return chunks.length > 0 ? Buffer.concat(chunks) : null;
+}
+
+function parseMultipart(buffer, boundary) {
+  const boundaryDelimiter = Buffer.from(`--${boundary}`);
+  const result = {};
+  let start = 0;
+
+  while (start < buffer.length) {
+    const boundaryIdx = buffer.indexOf(boundaryDelimiter, start);
+    if (boundaryIdx === -1) break;
+
+    const nextStart = boundaryIdx + boundaryDelimiter.length;
+    const headerEndIdx = buffer.indexOf('\r\n\r\n', nextStart);
+    if (headerEndIdx === -1) break;
+
+    const headersStr = buffer.subarray(nextStart, headerEndIdx).toString('utf-8');
+    const nameMatch = headersStr.match(/name="([^"]+)"/);
+    const filenameMatch = headersStr.match(/filename="([^"]+)"/);
+
+    const bodyStart = headerEndIdx + 4;
+    const nextBoundaryIdx = buffer.indexOf(boundaryDelimiter, bodyStart);
+    if (nextBoundaryIdx === -1) break;
+
+    let bodyEnd = nextBoundaryIdx;
+    if (bodyEnd >= 2 && buffer[bodyEnd - 2] === 13 && buffer[bodyEnd - 1] === 10) {
+      bodyEnd -= 2;
+    }
+
+    const valueBuffer = buffer.subarray(bodyStart, bodyEnd);
+    if (nameMatch) {
+      const fieldName = nameMatch[1];
+      result[fieldName] = valueBuffer.toString('utf-8');
+      if (filenameMatch && !result.filename) {
+        result.filename = filenameMatch[1];
+      }
+    }
+
+    start = nextBoundaryIdx;
+  }
+  return result;
+}
+
+async function parseBody(req) {
   if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
     return req.body;
   }
-  if (Buffer.isBuffer(req.body)) {
-    const text = req.body.toString('utf-8');
-    return text.trim() ? JSON.parse(text) : {};
+
+  const contentType = req.headers['content-type'] || '';
+  const rawBuffer = await getRawBodyBuffer(req);
+  if (!rawBuffer || rawBuffer.length === 0) {
+    return {};
   }
-  if (typeof req.body === 'string' && req.body.trim().length > 0) {
-    return JSON.parse(req.body);
+
+  if (contentType.includes('multipart/form-data')) {
+    const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
+    if (boundaryMatch) {
+      const boundary = boundaryMatch[1].trim().replace(/^["']|["']$/g, '');
+      return parseMultipart(rawBuffer, boundary);
+    }
   }
+
+  const text = rawBuffer.toString('utf-8').trim();
+  if (text.length > 0) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      if (text.startsWith('<') || contentType.includes('text/html')) {
+        return { type: 'html', html: text };
+      }
+      throw new Error('Invalid JSON or request payload.');
+    }
+  }
+
   return {};
+}
+
+function resolveRenderPayload(body) {
+  const type = (body.type || (body.url ? 'url' : body.file ? 'file' : 'html')).toLowerCase();
+
+  if (type === 'url') {
+    const url = body.url || body.link || body.html;
+    if (!url || typeof url !== 'string' || !url.trim().startsWith('http')) {
+      throw new Error('Missing or invalid "url" parameter. Must be a valid HTTP or HTTPS URL.');
+    }
+    return { mode: 'url', source: url.trim() };
+  }
+
+  if (type === 'file') {
+    const rawFile = body.file || body.data || body.content || body.html;
+    if (!rawFile || typeof rawFile !== 'string' || rawFile.trim().length === 0) {
+      throw new Error('Missing or empty "file" parameter for type "file".');
+    }
+
+    let trimmed = rawFile.trim();
+    // Handle data URIs like data:text/html;base64,...
+    if (trimmed.startsWith('data:')) {
+      const commaIdx = trimmed.indexOf(',');
+      if (commaIdx !== -1) {
+        trimmed = trimmed.slice(commaIdx + 1).trim();
+      }
+    }
+
+    let decodedHtml;
+    try {
+      const buffer = Buffer.from(trimmed, 'base64');
+      // If it looks like base64 and round-trips cleanly without angle brackets
+      const isBase64 = !trimmed.includes('<') && buffer.toString('base64').replace(/=/g, '') === trimmed.replace(/[\s=]/g, '');
+      if (isBase64) {
+        decodedHtml = buffer.toString('utf-8');
+      } else {
+        decodedHtml = trimmed;
+      }
+    } catch {
+      decodedHtml = trimmed;
+    }
+
+    if (!decodedHtml || decodedHtml.trim().length === 0) {
+      throw new Error('Could not extract valid HTML content from the provided file.');
+    }
+
+    return { mode: 'html', source: decodedHtml };
+  }
+
+  // Default: type === 'html'
+  const html = body.html || body.content || body.file;
+  if (!html || typeof html !== 'string' || html.trim().length === 0) {
+    throw new Error('Missing or empty "html" field in request body.');
+  }
+
+  return { mode: 'html', source: html };
 }
 
 export default async function handler(req, res) {
@@ -75,17 +210,19 @@ export default async function handler(req, res) {
 
   let body;
   try {
-    body = parseBody(req);
+    body = await parseBody(req);
   } catch (err) {
-    return sendJsonError(res, 400, 'Invalid JSON body.', err.message);
+    return sendJsonError(res, 400, 'Invalid request body.', err.message);
   }
 
-  const { html, filename, options = {} } = body;
-
-  if (typeof html !== 'string' || html.trim().length === 0) {
-    return sendJsonError(res, 400, 'Missing or empty "html" field in request body.');
+  let renderTarget;
+  try {
+    renderTarget = resolveRenderPayload(body);
+  } catch (err) {
+    return sendJsonError(res, 400, err.message);
   }
 
+  const { filename, options = {} } = body;
   const safeFilename = sanitizeFilename(filename);
 
   let browser;
@@ -105,7 +242,13 @@ export default async function handler(req, res) {
     let pdfBuffer;
     try {
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+
+      if (renderTarget.mode === 'url') {
+        await page.goto(renderTarget.source, { waitUntil: 'networkidle0', timeout: 30000 });
+      } else {
+        await page.setContent(renderTarget.source, { waitUntil: 'networkidle0', timeout: 30000 });
+      }
+
       await page.emulateMediaType('print');
 
       pdfBuffer = await page.pdf({
@@ -122,7 +265,7 @@ export default async function handler(req, res) {
       });
     } catch (err) {
       console.error('PDF rendering failed:', err);
-      return sendJsonError(res, 500, 'Failed to render HTML to PDF.', err.message);
+      return sendJsonError(res, 500, 'Failed to render PDF.', err.message);
     }
 
     const binaryData = Buffer.from(pdfBuffer);
