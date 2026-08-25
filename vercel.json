@@ -3,11 +3,7 @@
   "functions": {
     "api/pdf.js": {
       "maxDuration": 60,
-      "includeFiles": [
-        "node_modules/@sparticuz/chromium/bin/**",
-        "templates/**",
-        "assets/**"
-      ]
+      "includeFiles": "{node_modules/@sparticuz/chromium/bin/**,templates/**,assets/**}"
     }
   }
 }
